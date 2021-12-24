@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <pdf-js-vue style="height: 800px;" :src="url"/>
   </div>
 </template>
 
@@ -7,6 +8,10 @@
 
 export default {
   name: 'App',
-  components: {}
+  data: function () {
+    return {
+      url: ''
+    }
+  }
 }
 </script>
