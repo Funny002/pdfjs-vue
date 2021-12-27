@@ -7,7 +7,7 @@
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "lib": "vue-cli-service build --target lib --name pdfjs-vue ./lib/index.js"
+    "lib": "vue-cli-service build --target lib --name pdfjs-vue ./index.js"
   },
   "dependencies": {
     "core-js": "^3.6.5",
@@ -21,8 +21,28 @@
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^6.2.2",
     "node-sass": "^4.12.0",
-    "pdfjs-dist": "2.12.313",
+    "pdfjs-dist": "^2.12.313",
     "sass-loader": "^8.0.2",
     "vue-template-compiler": "^2.6.11"
-  }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Funny002/pdfjs-vue.git"
+  },
+  "keywords": [
+    "pdf",
+    "vue-pdf"
+  ],
+  "author": {
+    "name": "Funny002",
+    "email": "funnydsu@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Funny002/pdfjs-vue/issues"
+  },
+  "homepage": "https://github.com/Funny002/pdfjs-vue#readme"
 }

@@ -1,3 +1,5 @@
+const sourceMap = false
+
 module.exports = {
   pages: {
     index: {
@@ -6,5 +8,9 @@ module.exports = {
       entry: './example/main.js',
       template: './example/index.html'
     }
-  }
+  },
+  css: {
+    sourceMap: sourceMap
+  },
+  productionSourceMap: sourceMap
 }

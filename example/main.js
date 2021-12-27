@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import App from './App.vue'
-import PdfJsVue from '../lib'
+import PdfJsVue from '../index'
 
 Vue.use(PdfJsVue)
 

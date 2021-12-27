@@ -1,44 +1,59 @@
 <template>
   <pdf-box
-      v-bind="pdfBox"
-      :max="nav.maxPage"
-      @change="navChange"
-      @resize="navResize"
-      :zoom.sync="nav.zoom"
-      :page.sync="nav.page"
-      @print="e => onTimeout('onPrint', e)"
-      @download="e => onTimeout('onDownLoad', e)">
-
+      ref="PdfBox"
+      :print="print"
+      @print="onPrint"
+      :resize="resize"
+      :title="getTitle"
+      @change="onChange"
+      :page="config.page"
+      :zoom="config.scale"
+      :download="download"
+      :loading="boxLoading"
+      @download="onDownLoad"
+      :max="config.maxPage"
+      :class="{'var-pdfJs--mini': viewWidth <= 600}"
+  >
+    <div class="var-pdfJs__error--box" v-if="isError">
+      <div class="var-pdfJs__error">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="128" height="128">
+          <path d="M569.517 440.013C587.975 472.007 564.806 512 527.94 512H48.054c-36.937 0-59.999-40.055-41.577-71.987L246.423 23.985c18.467-32.009 64.72-31.951 83.154 0l239.94 416.028zM288 354c-25.405 0-46 20.595-46 46s20.595 46 46 46 46-20.595 46-46-20.595-46-46-46zm-43.673-165.346l7.418 136c.347 6.364 5.609 11.346 11.982 11.346h48.546c6.373 0 11.635-4.982 11.982-11.346l7.418-136c.375-6.874-5.098-12.654-11.982-12.654h-63.383c-6.884 0-12.356 5.78-11.981 12.654z"/>
+        </svg>
+        <div class="var-pdfJs__error--text">加载失败</div>
+      </div>
+    </div>
+    <div v-else class="var-pdfJs__canvas" ref="PdfJsBody"></div>
   </pdf-box>
 </template>
 
 <script>
-import {createProp, PropBoolean, PropNumber, PropString} from '../utils/Props'
 import PdfBox from './PdfBox'
-
-// import PdfJs from './pdfjs'
+import {createProp, PropBoolean, PropString} from '../utils/Props'
+import getDocument, {getPage} from './pdfjs'
+import {hasEmpty} from '../utils/Limit'
 
 export default {
   name: 'PdfJsVue',
   components: {PdfBox},
   props: {
+    src: PropString(),
     title: PropString(''),
-    delay: PropNumber(300),
     print: PropBoolean(true),
-    downLoad: PropBoolean(true),
-    // page: PropNumber(1),
+    resize: PropBoolean(false),
+    download: PropBoolean(true),
     singlePage: PropBoolean(false),
-    emptyText: PropString('加载失败'),
-    src: createProp([String], '')
+    cmaps: createProp([String, Boolean], true)
   },
   data: function () {
     return {
-      timeout: {},
-      nav: {zoom: 75, page: 1, maxPage: 1}
-      // PDFDoc: null,
-      // isError: false,
-      // loading: false,
-      // config: {page: 1, scale: 1, load: false}
+      openUrl: '',
+      timeout: {}, // 加载延迟问题
+      PDFDoc: null,
+      viewWidth: 0,
+      getPage: null,
+      isError: false,
+      boxLoading: false,
+      config: {page: 1, maxPage: 1, scale: 100}
     }
   },
   watch: {
@@ -47,117 +62,130 @@ export default {
     }
   },
   computed: {
-    pdfBox () {
-      const {title, print, downLoad, loading} = this
-      return {title, print, downLoad, loading}
+    getTitle () {
+      return (this.title || '').replace(/\.pdf$/, '')
     }
   },
   mounted () {
-    this.__init(this.src)
+    if (!hasEmpty(this.src)) {
+      this.__init(this.src)
+    }
+    window.addEventListener('resize', this.__reView)
+    this.$nextTick(() => {
+      this.__reView()
+    })
+  },
+  destroyed () {
+    window.removeEventListener('resize', this.__reView)
   },
   methods: {
-    navResize (state) {
-      console.log(state)
+    __reView () {
+      this.viewWidth = this.$refs.PdfBox.$el.offsetWidth
     },
-    navChange (name, value) {
-      console.log(name, value)
+    __setLoading (state = false) {
+      if (this.timeout.boxLoad) clearTimeout(this.timeout.boxLoad)
+      this.timeout.boxLoad = setTimeout(() => {
+        this.boxLoading = state
+      })
     },
-    onTimeout (name, ...args) {
-      if (!this.timeout[name]) {
-        this[name](...args)
-      } else {
-        clearTimeout(this.timeout[name])
-      }
-      this.timeout[name] = setTimeout(() => {
-        delete this.timeout[name]
-      }, this.delay)
+    __reConfig (src) {
+      this.openUrl = src
+      this.isError = false
+      this.boxLoading = false
+      this.config = {page: 1, maxPage: 1, scale: 100}
     },
-    onPrint (e) {
-      console.log('onPrint', e)
-    },
-    onDownLoad (e) {
-      console.log('onDownLoad', e)
+    __setError (e) {
+      this.isError = true
+      console.error(new Error(e))
+      this.$emit('error', e)
+      this.__setLoading(false)
     },
     __init (src) {
-      console.log(src)
-      // this.isError = false
-      // if (hasEmpty(src)) {
-      //   console.warn('src 不能为空')
-      //   this.$emit('empty')
-      //   this.isError = true
-      // } else {
-      //   this.setLoad(true)
-      //   try {
-      //     // PdfJs(src).promise.then(pdfDoc => {
-      //     //   this.setLoad(false)
-      //     //   this.$emit('read') // 加载成功
-      //     //   this.PDFDoc = pdfDoc
-      //     //   console.log(pdfDoc)
-      //     //   this.getPage()
-      //     // })
-      //   } catch (e) {
-      //     this.setLoad(false)
-      //     this.$emit('error')
-      //     this.isError = true
-      //     console.error(e)
-      //   }
-      // }
+      this.__reConfig(src)
+      if (hasEmpty(src)) {
+        this.isError = true
+      } else {
+        this.__setLoading(true)
+        try {
+          getDocument(src, this.cmaps).promise.then(PDFDoc => {
+            this.config.maxPage = PDFDoc.numPages || 1
+            this.$emit('init', true)
+            this.__setLoading(false)
+            this.PDFDoc = PDFDoc
+            this.__setDrawing()
+          }).catch(e => {
+            this.__setError(e.message)
+          })
+        } catch (e) {
+          this.__setError(e.message)
+        }
+      }
+    },
+    initDrawing () {
+      this.__setLoading(true)
+      this.$refs.PdfJsBody.innerHTML = ''
+      const {PDFDoc, config: {page, maxPage, scale}} = this
+      // 只显示一页
+      if (this.singlePage) {
+        getPage(PDFDoc, page, maxPage).then(canvas => {
+          this.__setLoading(false)
+          this.$refs.PdfJsBody.append(canvas)
+          this.$emit('reload')
+        })
+      } else {
+        Promise.all(Array.from(Array(maxPage), (v, k) => {
+          return getPage(PDFDoc, k + 1, scale)
+        })).then(canvasList => {
+          this.$refs.PdfJsBody.append(...canvasList)
+          this.__setLoading(false)
+          this.$emit('reload')
+        })
+      }
+    },
+    __setDrawing () {
+      if (this.timeout.drawing) clearTimeout(this.timeout.drawing)
+      this.timeout.drawing = setTimeout(() => {
+        this.initDrawing()
+      }, 10)
+    },
+    __pageAnchor (page) {
+      const a = document.createElement('a')
+      a.href = `#PdfJs-page-${page}`
+      a.click()
+      a.remove()
+    },
+    onPrint () {
+      let images = ''
+      for (let canvas of this.$refs.PdfJsBody.getElementsByTagName('canvas')) {
+        images += `<img src="${canvas.toDataURL()}" alt="canvas"/>`
+      }
+      const win = window.open('', '', '')
+      win.document.write(images)
+      win.document.close()
+      setTimeout(() => {
+        win.focus()
+        win.print()
+        win.close()
+      })
+    },
+    onDownLoad () {
+      const a = document.createElement('a')
+      a.download = this.getTitle + '.pdf' // 名字
+      a.href = this.openUrl // 下载地址
+      a.click()
+      a.remove()
+    },
+    onChange (name, value) {
+      name = name === 'zoom' ? 'scale' : name
+      if (this.config[name] !== value) {
+        this.config[name] = value // 更改
+        if (name === 'scale' || this.singlePage) {
+          this.__setDrawing()
+        } else if (name === 'page') {
+          this.__pageAnchor(value)
+        }
+      }
     }
-    // setLoad (state = false, timeout = 300) {
-    //   if (this.timeout.load) clearTimeout(this.timeout.load)
-    //   this.timeout.load = setTimeout(() => {
-    //     this.config.load = state
-    //   }, timeout)
-    // },
-    // getPage () {
-    //   this.setLoad(true)
-    //   try {
-    //     this.renderPage().then(data => {
-    //       this.setLoad(false)
-    //       data.forEach(canvas => {
-    //         this.$refs.PDFJs.append(canvas)
-    //       })
-    //       this.$('render')
-    //     })
-    //   } catch (e) {
-    //     this.setLoad(false)
-    //     this.isError = true
-    //   }
-    // },
-    // getPageNum (num) {
-    //   return new Promise((resolve, reject) => {
-    //     try {
-    //       this.PDFDoc.getPage(num).then(page => {
-    //         const outputScale = window.devicePixelRatio || 1
-    //         const canvas = document.createElement('canvas')
-    //         const canvasContext = canvas.getContext('2d')
-    //         const viewport = page.getViewport({scale: this.scale})
-    //         const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
-    //         canvas.style.cssText = `width: ${viewport.width}px; height: ${viewport.height};`
-    //         canvas.height = Math.floor(viewport.height * outputScale) + 'px'
-    //         canvas.width = Math.floor(viewport.width * outputScale) + 'px'
-    //         page.render({viewport, transform, canvasContext}).promise.then(() => {
-    //           resolve(canvas)
-    //         })
-    //       })
-    //     } catch (e) {
-    //       reject(e)
-    //     }
-    //   })
-    // },
-    // reFresh () {
-    //   this.config = {page: 1, scale: 1, load: false} // 清空配置
-    //   this.$refs.PDFJs.innerHTML = '' // 清空节点
-    //   this.isError = false
-    // },
-    // renderPage () {
-    //   const getPage = this.getPageNum
-    //   let list = [getPage(this.page)]
-    //   if (!this.singlePage) {
-    //     list = Array.from(Array(this.maxPage), ((v, k) => getPage(k + 1)))
-    //   }
-    //   return Promise.all(list)
-    // }
   }
 }
 </script>
