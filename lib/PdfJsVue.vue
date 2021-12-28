@@ -30,7 +30,7 @@
 import PdfBox from './PdfBox'
 import {createProp, PropBoolean, PropString} from '../utils/Props'
 import getDocument, {getPage} from './pdfjs'
-import {hasEmpty} from '../utils/Limit'
+import {hasEmpty, Size} from '../utils/Limit'
 
 export default {
   name: 'PdfJsVue',
@@ -51,6 +51,7 @@ export default {
       PDFDoc: null,
       viewWidth: 0,
       getPage: null,
+      observer: null,
       isError: false,
       boxLoading: false,
       config: {page: 1, maxPage: 1, scale: 100}
@@ -59,6 +60,9 @@ export default {
   watch: {
     src (val) {
       this.__init(val)
+    },
+    singlePage () {
+      this.__init(this.openUrl)
     }
   },
   computed: {
@@ -92,6 +96,7 @@ export default {
       this.openUrl = src
       this.isError = false
       this.boxLoading = false
+      if (this.observer) this.observer.disconnect()
       this.config = {page: 1, maxPage: 1, scale: 100}
     },
     __setError (e) {
@@ -121,13 +126,19 @@ export default {
         }
       }
     },
+    __setDrawing () {
+      if (this.timeout.drawing) clearTimeout(this.timeout.drawing)
+      this.timeout.drawing = setTimeout(() => {
+        this.initDrawing()
+      }, 10)
+    },
     initDrawing () {
       this.__setLoading(true)
       this.$refs.PdfJsBody.innerHTML = ''
       const {PDFDoc, config: {page, maxPage, scale}} = this
       // 只显示一页
       if (this.singlePage) {
-        getPage(PDFDoc, page, maxPage).then(canvas => {
+        getPage(PDFDoc, page, scale).then(canvas => {
           this.__setLoading(false)
           this.$refs.PdfJsBody.append(canvas)
           this.$emit('reload')
@@ -136,23 +147,39 @@ export default {
         Promise.all(Array.from(Array(maxPage), (v, k) => {
           return getPage(PDFDoc, k + 1, scale)
         })).then(canvasList => {
-          this.$refs.PdfJsBody.append(...canvasList)
-          this.__setLoading(false)
           this.$emit('reload')
+          this.__setLoading(false)
+          this.$refs.PdfJsBody.append(...canvasList)
+          this.__setScrollPage(this.$refs.PdfJsBody)
         })
       }
     },
-    __setDrawing () {
-      if (this.timeout.drawing) clearTimeout(this.timeout.drawing)
-      this.timeout.drawing = setTimeout(() => {
-        this.initDrawing()
-      }, 10)
+    __setScrollPage ({parentNode, childNodes}) {
+      const threshold = Size(parentNode.offsetHeight / childNodes[0].offsetHeight / 2, 0, 1)
+      this.observer = new IntersectionObserver(args => {
+        if (this.timeout.page) {
+          this.timeout.page = false
+        } else {
+          args.forEach(({isIntersecting, target}) => {
+            if (isIntersecting) {
+              this.config.page = parseInt(target.id.replace(/[^\d]/g, ''))
+            }
+          })
+        }
+      }, {root: parentNode, threshold})
+      childNodes.forEach(el => {
+        this.observer.observe(el)
+      })
     },
     __pageAnchor (page) {
-      const a = document.createElement('a')
-      a.href = `#PdfJs-page-${page}`
-      a.click()
-      a.remove()
+      this.timeout.page = true
+      const box = this.$refs.PdfJsBody.parentElement
+      if (page === 1) {
+        box.scrollTop = 0
+      } else {
+        const heightList = Array.from(Array(page - 1), (_, k) => document.getElementById(`PdfJs-page-${k + 1}`).offsetHeight)
+        box.scrollTop = heightList.reduce((v, k) => (v += (k + 10), v), 0)
+      }
     },
     onPrint () {
       let images = ''

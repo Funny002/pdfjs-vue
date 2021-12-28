@@ -5,6 +5,8 @@
 > ps:
 > 目前只支持链接的方式
 
+#### [更新记录](./UPDATE.md)
+
 ### 未支持&部分支持功能
 
 > 下载 ~ 使用的`a`标签下载，可能和导致无法下载
@@ -36,11 +38,11 @@
 import PdfJsVue from 'pdfjs-vue'
 
 export default {
-  ......,
+  ......
   components: {PdfJsVue},
   data: function () {
     return {
-      ......,
+      ......
       title: 'Hello World.pdf' || 'Hello World',
       pdfUrl: './Hello World.pdf',
     }
