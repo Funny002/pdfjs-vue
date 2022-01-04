@@ -14,11 +14,11 @@
       :max="config.maxPage"
       :class="{'var-pdfJs--mini': viewWidth <= 600}"
   >
-    <template v-if="$slots.download" name="download">
-      <slot slot="download"><!-- 下载 --></slot>
+    <template v-if="$slots.download" slot="download">
+      <slot name="download"><!-- 下载 --></slot>
     </template>
-    <template v-if="$slots.print" name="print">
-      <slot slot="download"><!-- 打印 --></slot>
+    <template v-if="$slots.print" slot="print">
+      <slot name="print"><!-- 打印 --></slot>
     </template>
     <div class="var-pdfJs__error--box" v-if="isError">
       <div class="var-pdfJs__error">
