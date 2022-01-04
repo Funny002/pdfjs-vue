@@ -14,6 +14,8 @@
       :max="config.maxPage"
       :class="{'var-pdfJs--mini': viewWidth <= 600}"
   >
+    <slot v-if="$slots.download" name="download" slot="download"><!-- 下载 --></slot>
+    <slot v-if="$slots.print" name="print" slot="print"><!-- 打印 --></slot>
     <div class="var-pdfJs__error--box" v-if="isError">
       <div class="var-pdfJs__error">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="128" height="128">
